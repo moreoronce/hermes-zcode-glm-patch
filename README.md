@@ -57,24 +57,90 @@ In `run_agent.py`, these headers are injected when the provider is `zai` or the 
 
 ## Installation
 
-### Option A — Apply the unified diff (recommended)
+### Prerequisites
+
+- Hermes Agent v0.17.0+ installed at `~/.hermes/hermes-agent`
+- A `zai` provider configured (GLM Coding Plan API key)
+- `git` and a working Python venv inside `hermes-agent/`
+- No uncommitted changes to the 5 target files (see below)
+
+### Human install (step by step)
+
+**1 — Clone this repo**
 
 ```bash
-cd ~/.hermes/hermes-agent
-git apply patches/zcode-glm-patch.diff
+git clone https://github.com/moreoronce/hermes-zcode-glm-patch.git /tmp/zcode-patch
 ```
 
-### Option B — Manual
+**2 — Check for conflicts**
 
-Reference the individual sections in `patches/zcode-glm-patch.diff` and edit each file by hand.
-
-### Verify
+Before applying, verify the target files have no uncommitted local changes:
 
 ```bash
 cd ~/.hermes/hermes-agent
+git status --short -- agent/auxiliary_client.py agent/system_prompt.py run_agent.py \
+  tests/agent/test_system_prompt.py tests/run_agent/test_provider_attribution_headers.py
+```
+
+If anything shows up, `git stash` or commit first.
+
+**3 — Back up (safety net)**
+
+```bash
+git tag pre-zcode-patch
+```
+
+If something goes wrong later: `git reset --hard pre-zcode-patch` rolls everything back in one command.
+
+**4 — Apply the patch**
+
+```bash
+git apply --check /tmp/zcode-patch/patches/zcode-glm-patch.diff   # dry-run first
+git apply /tmp/zcode-patch/patches/zcode-glm-patch.diff           # apply for real
+```
+
+If `--check` reports conflicts, the upstream code has diverged. See [Upstream Sync Notes](#upstream-sync-notes) below, or fall back to [manual installation](#manual-install-fallback).
+
+**5 — Verify**
+
+```bash
 source venv/bin/activate
 python -m pytest tests/agent/test_system_prompt.py::TestZaiSystemPromptRewrite \
   tests/run_agent/test_provider_attribution_headers.py::test_zai_base_url_applies_zcode_client_fingerprint -v
+```
+
+All 3 tests should pass. Then restart Hermes (TUI / gateway / desktop app) so the new headers take effect — existing in-flight clients won't hot-reload the change.
+
+**6 — Confirm the fix**
+
+Start a new session and send any message. In the gateway log or dashboard, verify the request to `api.z.ai` carries `User-Agent: ZCode/3.1.8 ...` and `X-ZCode-App-Version: 3.1.8`. The 429/1305 errors should be gone.
+
+#### Manual install fallback
+
+If `git apply` fails due to upstream divergence, apply each section of `patches/zcode-glm-patch.diff` by hand:
+
+1. **`agent/auxiliary_client.py`** — add `import uuid` to the top imports; add the `_ZCODE_APP_VERSION` / `_ZCODE_SESSION_ID` constants and the `build_zcode_headers()` function (follow the diff hunk `@@ ... @@` markers to find insertion points).
+2. **`agent/system_prompt.py`** — in `build_system_prompt()`, after the `joined = ...` line and before the truncation-warning loop, insert the `zai`+`glm-5.2` brand-rewrite block.
+3. **`run_agent.py`** — in `_apply_client_headers_for_base_url()`, add the `build_zcode_headers` import and the `elif provider == "zai"` branch.
+4. **Test files** — add the test cases from the diff.
+
+### Agent-assisted install
+
+If you are an AI agent (e.g. another Hermes instance, Claude Code, Cursor) reading this repo to apply the patch on behalf of a user, see **[INSTALL-AGENT.md](./INSTALL-AGENT.md)** for a machine-readable install protocol.
+
+### Upgrading the ZCode version
+
+The version is hardcoded as `3.1.8` but can be overridden without editing code:
+
+```bash
+# In ~/.hermes/.env or your shell profile:
+export ZCODE_APP_VERSION=3.2.0
+```
+
+To change the default, edit the fallback in `agent/auxiliary_client.py`:
+
+```python
+_ZCODE_APP_VERSION = os.environ.get("ZCODE_APP_VERSION", "3.1.8")  # ← change this
 ```
 
 ## Upstream Sync Notes

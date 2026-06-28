@@ -47,12 +47,51 @@
 
 ## 安装
 
+### 前置条件
+
+- Hermes Agent v0.17.0+，安装路径 `~/.hermes/hermes-agent`
+- 已配置 `zai` provider（GLM Coding Plan API Key）
+- `git` 和 hermes-agent 内的 Python venv 可用
+- 5 个目标文件没有未提交的本地改动（见下文）
+
+### 人工安装（逐步）
+
+**1 — 克隆本仓库**
+
 ```bash
-cd ~/.hermes/hermes-agent
-git apply patches/zcode-glm-patch.diff
+git clone https://github.com/moreoronce/hermes-zcode-glm-patch.git /tmp/zcode-patch
 ```
 
-验证：
+**2 — 检查冲突**
+
+应用前确认目标文件没有未提交的改动：
+
+```bash
+cd ~/.hermes/hermes-agent
+git status --short -- agent/auxiliary_client.py agent/system_prompt.py run_agent.py \
+  tests/agent/test_system_prompt.py tests/run_agent/test_provider_attribution_headers.py
+```
+
+有输出的话先 `git stash` 或 commit。
+
+**3 — 备份（安全网）**
+
+```bash
+git tag pre-zcode-patch
+```
+
+后续出问题：`git reset --hard pre-zcode-patch` 一键回滚。
+
+**4 — 应用补丁**
+
+```bash
+git apply --check /tmp/zcode-patch/patches/zcode-glm-patch.diff   # 先 dry-run
+git apply /tmp/zcode-patch/patches/zcode-glm-patch.diff           # 正式应用
+```
+
+如果 `--check` 报冲突，说明上游代码已经偏离。参见下方[上游同步说明](#上游同步说明)，或使用[手动安装](#手动安装回退)。
+
+**5 — 验证**
 
 ```bash
 source venv/bin/activate
@@ -60,10 +99,49 @@ python -m pytest tests/agent/test_system_prompt.py::TestZaiSystemPromptRewrite \
   tests/run_agent/test_provider_attribution_headers.py::test_zai_base_url_applies_zcode_client_fingerprint -v
 ```
 
-## 致谢
+3 个测试全过。然后重启 Hermes（TUI / gateway / desktop app），让新 headers 生效——运行中的 client 不会热加载。
 
-- [Hermes Agent](https://github.com/NousResearch/hermes-agent) — Nous Research
-- [Deep Router 分析文章](https://deeprouter.org/article/hermes-agent-optimization-fix-glm-5-2-model-429-1305-overloaded)
+**6 — 确认修复**
+
+开一个新 session 发条消息。在 gateway 日志或 dashboard 里，确认发往 `api.z.ai` 的请求带了 `User-Agent: ZCode/3.1.8 ...` 和 `X-ZCode-App-Version: 3.1.8`。429/1305 错误应该消失。
+
+#### 手动安装回退
+
+如果 `git apply` 因上游偏离失败，按 `patches/zcode-glm-patch.diff` 中的 diff hunk 逐文件手动编辑：
+
+1. **`agent/auxiliary_client.py`** — 顶部 import 加 `uuid`；新增 `_ZCODE_APP_VERSION` / `_ZCODE_SESSION_ID` 常量和 `build_zcode_headers()` 函数（按 `@@ ... @@` 标记定位插入点）。
+2. **`agent/system_prompt.py`** — 在 `build_system_prompt()` 中 `joined = ...` 之后、截断警告循环之前，插入 `zai`+`glm-5.2` 品牌词替换块。
+3. **`run_agent.py`** — 在 `_apply_client_headers_for_base_url()` 中加入 `build_zcode_headers` import 和 `elif provider == "zai"` 分支。
+4. **测试文件** — 按补丁添加测试用例。
+
+### Agent 辅助安装
+
+如果你是 AI Agent（另一个 Hermes 实例、Claude Code、Cursor 等），代替用户读取本仓库并应用补丁，参见 **[INSTALL-AGENT.md](./INSTALL-AGENT.md)** 的机器可读安装协议。
+
+### 升级 ZCode 版本号
+
+版本默认硬编码 `3.1.8`，但无需改代码即可覆盖：
+
+```bash
+# 在 ~/.hermes/.env 或 shell profile 中：
+export ZCODE_APP_VERSION=3.2.0
+```
+
+修改默认值则编辑 `agent/auxiliary_client.py`：
+
+```python
+_ZCODE_APP_VERSION = os.environ.get("ZCODE_APP_VERSION", "3.1.8")  # ← 改这里
+```
+
+## 上游同步说明
+
+上游合并后重新检查：
+
+1. `auxiliary_client.py` 和 `run_agent.py` 是高频变动文件，关注 `_create_openai_client()` wrapper 和 header 分支逻辑。
+2. `system_prompt.py` 上游极少改组装边界，但确认一下。
+3. ZCode 版本号默认 `3.1.8`，可通过 `ZCODE_APP_VERSION` 环境变量覆盖，无需改代码。
+
+## 致谢
 
 ## License
 
