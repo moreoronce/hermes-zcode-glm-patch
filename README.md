@@ -156,6 +156,12 @@ After merging Hermes upstream updates, re-check:
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent) — Nous Research
 - Root-cause analysis: [Deep Router — Hermes Agent 优化：解决GLM-5.2模型429(1305 overloaded)](https://deeprouter.org/article/hermes-agent-optimization-fix-glm-5-2-model-429-1305-overloaded)
 
+<p align="center">
+  <a href="https://x.com/moreoronce">
+    <img src="https://img.shields.io/badge/X-Follow_@moreoronce-black?style=for-the-badge&logo=x&logoColor=white" height="40" alt="X @moreoronce">
+  </a>
+</p>
+
 ## License
 
 MIT
