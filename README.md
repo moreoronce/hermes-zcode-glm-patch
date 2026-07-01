@@ -53,7 +53,7 @@ In `run_agent.py`, these headers are injected when the provider is `zai` or the 
 | `tests/agent/test_system_prompt.py` | New `TestZaiSystemPromptRewrite` test class (2 cases) |
 | `tests/run_agent/test_provider_attribution_headers.py` | New fingerprint assertion test |
 
-**6 files, 127 lines** (including tests). The `package-lock.json` diff is unrelated and excluded.
+**5 files, +127/-1** (including tests). The `package-lock.json` diff is unrelated and excluded.
 
 ## Installation
 
@@ -150,6 +150,8 @@ After merging Hermes upstream updates, re-check:
 1. `auxiliary_client.py` and `run_agent.py` are high-churn files — watch the `_create_openai_client()` wrapper and header branch logic for conflicts.
 2. `system_prompt.py` upstream rarely changes the assembly boundary, but verify.
 3. ZCode version defaults to `3.1.8`; override at runtime with `ZCODE_APP_VERSION=3.2.0` without code changes.
+
+Current compatibility snapshot: rebased against Hermes Agent upstream `44ddc552f` with the targeted verification suite passing (`23 passed`).
 
 ## Credits
 

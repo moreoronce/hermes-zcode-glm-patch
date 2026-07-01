@@ -1,5 +1,5 @@
 diff --git a/agent/auxiliary_client.py b/agent/auxiliary_client.py
-index dfeec87e1..ed8d9ad52 100644
+index c24cc972a..a4e3b25dc 100644
 --- a/agent/auxiliary_client.py
 +++ b/agent/auxiliary_client.py
 @@ -46,6 +46,7 @@ import logging
@@ -10,7 +10,7 @@ index dfeec87e1..ed8d9ad52 100644
  from pathlib import Path  # noqa: F401 — used by test mocks
  from types import SimpleNamespace
  from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
-@@ -505,6 +506,32 @@ def build_nvidia_nim_headers(base_url: str | None) -> dict:
+@@ -514,6 +515,32 @@ def build_nvidia_nim_headers(base_url: str | None) -> dict:
      return {}
  
  
@@ -43,7 +43,7 @@ index dfeec87e1..ed8d9ad52 100644
  
  # Nous Portal extra_body for product attribution.
  # Callers should pass this as extra_body in chat.completions.create()
-@@ -1615,6 +1642,12 @@ def _resolve_api_key_provider() -> Tuple[Optional[OpenAI], Optional[str]]:
+@@ -1624,6 +1651,12 @@ def _resolve_api_key_provider() -> Tuple[Optional[OpenAI], Optional[str]]:
              extra = {}
              if base_url_host_matches(base_url, "api.kimi.com"):
                  extra["default_headers"] = {"User-Agent": "claude-code/0.1.0"}
@@ -53,10 +53,10 @@ index dfeec87e1..ed8d9ad52 100644
 +                or base_url_host_matches(base_url, "open.bigmodel.cn")
 +            ):
 +                extra["default_headers"] = build_zcode_headers()
-             elif base_url_host_matches(base_url, "api.githubcopilot.com"):
+             elif base_url_host_matches(base_url, "githubcopilot.com"):
                  from hermes_cli.models import copilot_default_headers
  
-@@ -1655,6 +1688,12 @@ def _resolve_api_key_provider() -> Tuple[Optional[OpenAI], Optional[str]]:
+@@ -1664,6 +1697,12 @@ def _resolve_api_key_provider() -> Tuple[Optional[OpenAI], Optional[str]]:
          extra = {}
          if base_url_host_matches(base_url, "api.kimi.com"):
              extra["default_headers"] = {"User-Agent": "claude-code/0.1.0"}
@@ -66,10 +66,10 @@ index dfeec87e1..ed8d9ad52 100644
 +            or base_url_host_matches(base_url, "open.bigmodel.cn")
 +        ):
 +            extra["default_headers"] = build_zcode_headers()
-         elif base_url_host_matches(base_url, "api.githubcopilot.com"):
+         elif base_url_host_matches(base_url, "githubcopilot.com"):
              from hermes_cli.models import copilot_default_headers
  
-@@ -3801,6 +3840,11 @@ def _to_async_client(sync_client, model: str, is_vision: bool = False):
+@@ -3831,6 +3870,11 @@ def _to_async_client(sync_client, model: str, is_vision: bool = False):
          )
      elif base_url_host_matches(sync_base_url, "api.kimi.com"):
          async_kwargs["default_headers"] = {"User-Agent": "claude-code/0.1.0"}
@@ -81,7 +81,7 @@ index dfeec87e1..ed8d9ad52 100644
      elif base_url_host_matches(sync_base_url, "integrate.api.nvidia.com"):
          async_kwargs["default_headers"] = build_nvidia_nim_headers(sync_base_url)
      else:
-@@ -4095,6 +4139,12 @@ def resolve_provider_client(
+@@ -4128,6 +4172,12 @@ def resolve_provider_client(
                  extra["default_query"] = _dq
              if base_url_host_matches(custom_base, "api.kimi.com"):
                  extra["default_headers"] = {"User-Agent": "claude-code/0.1.0"}
@@ -91,7 +91,7 @@ index dfeec87e1..ed8d9ad52 100644
 +                or base_url_host_matches(custom_base, "open.bigmodel.cn")
 +            ):
 +                extra["default_headers"] = build_zcode_headers()
-             elif base_url_host_matches(custom_base, "api.githubcopilot.com"):
+             elif base_url_host_matches(custom_base, "githubcopilot.com"):
                  from hermes_cli.copilot_auth import copilot_request_headers
                  extra["default_headers"] = copilot_request_headers(
 diff --git a/agent/system_prompt.py b/agent/system_prompt.py
@@ -115,10 +115,10 @@ index b9b26e07a..c3b7ff3c7 100644
      # channel so gateway/CLI users see them in chat instead of only in logs.
      for warning in drain_truncation_warnings():
 diff --git a/run_agent.py b/run_agent.py
-index 6a5fe32d2..b7264f2a9 100644
+index 8157c01ca..250d87412 100644
 --- a/run_agent.py
 +++ b/run_agent.py
-@@ -4044,6 +4044,7 @@ class AIAgent:
+@@ -4103,6 +4103,7 @@ class AIAgent:
          from agent.auxiliary_client import (
              build_nvidia_nim_headers,
              build_or_headers,
@@ -126,7 +126,7 @@ index 6a5fe32d2..b7264f2a9 100644
          )
  
          if base_url_host_matches(base_url, "openrouter.ai"):
-@@ -4058,6 +4059,12 @@ class AIAgent:
+@@ -4117,6 +4118,12 @@ class AIAgent:
              self._client_kwargs["default_headers"] = copilot_default_headers()
          elif base_url_host_matches(base_url, "api.kimi.com"):
              self._client_kwargs["default_headers"] = {"User-Agent": "claude-code/0.1.0"}
@@ -203,7 +203,7 @@ index 6ebf2a619..caaba42cd 100644
 +        assert "Hermes Agent identity" in prompt
 +        assert "ZCode identity" not in prompt
 diff --git a/tests/run_agent/test_provider_attribution_headers.py b/tests/run_agent/test_provider_attribution_headers.py
-index dab69d57b..b2c0c6f50 100644
+index dec932e34..d948d3934 100644
 --- a/tests/run_agent/test_provider_attribution_headers.py
 +++ b/tests/run_agent/test_provider_attribution_headers.py
 @@ -159,6 +159,27 @@ def test_gmi_base_url_picks_up_profile_user_agent(mock_openai):

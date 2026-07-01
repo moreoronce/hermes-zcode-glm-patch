@@ -109,7 +109,7 @@ for k, v in h.items():
 
 Report to the user with:
 
-1. **What was applied** — "2 patches across 5 source files + 2 test files"
+1. **What was applied** — "Z.AI/ZCode compatibility patch across 3 source files + 2 test files"
 2. **Test results** — "3/3 passed"
 3. **Header verification** — paste the `build_zcode_headers()` output (safe to show — no secrets)
 4. **Rollback instructions** — "If issues arise: `git reset --hard pre-zcode-patch`"
